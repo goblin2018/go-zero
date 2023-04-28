@@ -71,6 +71,7 @@ func GoCommand(_ *cobra.Command, _ []string) error {
 
 // DoGenProject gen go project files with api file
 func DoGenProject(apiFile, dir, style string) error {
+	name := apiutil.GetFileName(apiFile)
 	api, err := parser.Parse(apiFile)
 	if err != nil {
 		return err
@@ -93,12 +94,22 @@ func DoGenProject(apiFile, dir, style string) error {
 
 	logx.Must(genEtc(dir, cfg, api))
 	logx.Must(genConfig(dir, cfg, api))
+
+	// 启动入口
 	logx.Must(genMain(dir, rootPkg, cfg, api))
+	// 配置文件入口
 	logx.Must(genServiceContext(dir, rootPkg, cfg, api))
-	logx.Must(genTypes(dir, cfg, api))
+
+	fmt.Println("generating files...", name)
+	// 类型文件
+	logx.Must(genTypes(dir, cfg, api, name))
+	// 路由文件
 	logx.Must(genRoutes(dir, rootPkg, cfg, api))
+	// handlers文件
 	logx.Must(genHandlers(dir, rootPkg, cfg, api))
+	// logic文件
 	logx.Must(genLogic(dir, rootPkg, cfg, api))
+	// 中间件文件
 	logx.Must(genMiddleware(dir, cfg, api))
 
 	if err := backupAndSweep(apiFile); err != nil {

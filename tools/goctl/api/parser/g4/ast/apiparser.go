@@ -127,11 +127,13 @@ func (p *Parser) parse(filename, content string) (*Api, error) {
 	apiAstList = append(apiAstList, root)
 	p.storeVerificationInfo(root)
 	p.syntax = root.Syntax
-	impApiAstList, err := p.invokeImportedApi(root.Import)
-	if err != nil {
-		return nil, err
-	}
-	apiAstList = append(apiAstList, impApiAstList...)
+
+	// TODO 不处理导入的结构体 做分布式项目的时候，还是需要放开，方便操作
+	// impApiAstList, err := p.invokeImportedApi(root.Import)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// apiAstList = append(apiAstList, impApiAstList...)
 
 	if !p.skipCheckTypeDeclaration {
 		err = p.checkTypeDeclaration(apiAstList)

@@ -12,10 +12,7 @@ import (
 	apiutil "github.com/zeromicro/go-zero/tools/goctl/api/util"
 	"github.com/zeromicro/go-zero/tools/goctl/config"
 	"github.com/zeromicro/go-zero/tools/goctl/util"
-	"github.com/zeromicro/go-zero/tools/goctl/util/format"
 )
-
-const typesFile = "types"
 
 //go:embed types.tpl
 var typesTemplate string
@@ -39,19 +36,16 @@ func BuildTypes(types []spec.Type) (string, error) {
 }
 
 // todo 分开多个文件生成
-func genTypes(dir string, cfg *config.Config, api *spec.ApiSpec) error {
+func genTypes(dir string, cfg *config.Config, api *spec.ApiSpec, name string) error {
 	val, err := BuildTypes(api.Types)
 	if err != nil {
 		return err
 	}
 
-	typeFilename, err := format.FileNamingFormat(cfg.NamingFormat, typesFile)
-	if err != nil {
-		return err
-	}
-
-	typeFilename = typeFilename + ".go"
+	typeFilename := name + ".go"
+	fmt.Println("typeFilename:", typeFilename)
 	filename := path.Join(dir, typesDir, typeFilename)
+	fmt.Println("typeFilename:", filename)
 	os.Remove(filename)
 
 	return genFile(fileGenConfig{

@@ -1,11 +1,13 @@
 package gogen
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
 	"path"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/zeromicro/go-zero/tools/goctl/api/parser/g4/gen/api"
 	"github.com/zeromicro/go-zero/tools/goctl/api/spec"
@@ -46,11 +48,31 @@ func genLogicByRoute(dir, rootPkg string, cfg *config.Config, group spec.Group, 
 		responseString = "(resp " + resp + ", err error)"
 		returnString = "return"
 	} else {
-		responseString = "error"
-		returnString = "return nil"
+		responseString = "(err error)"
+		returnString = "return"
 	}
 	if len(route.RequestTypeName()) > 0 {
 		requestString = "req *" + requestGoTypeName(route, typesPacket)
+	}
+	funcName := strings.TrimSuffix(logic, "Logic")
+	bodyStr := ""
+
+	// 获取请求类型名称 去除前缀和后缀
+	requestType := route.RequestType.Name()
+	requestType = strings.TrimPrefix(requestType, "List")
+	requestType = strings.TrimSuffix(requestType, "Req")
+	requestType = strings.TrimPrefix(requestType, "Del")
+
+	// 增加增删改查的基础逻辑
+	switch funcName {
+	case "add":
+		bodyStr = genBody(requestType, addTemplate)
+	case "update":
+		bodyStr = genBody(requestType, updateTemplate)
+	case "del":
+		bodyStr = genBody(requestType, delTemplate)
+	case "list":
+		bodyStr = genBody(requestType, listTemplate)
 	}
 
 	subDir := getLogicFolderPath(group, route)
@@ -67,6 +89,7 @@ func genLogicByRoute(dir, rootPkg string, cfg *config.Config, group spec.Group, 
 			"imports":      imports,
 			"logic":        strings.Title(logic),
 			"function":     strings.Title(strings.TrimSuffix(logic, "Logic")),
+			"body":         bodyStr,
 			"responseType": responseString,
 			"returnString": returnString,
 			"request":      requestString,
@@ -134,4 +157,45 @@ func shallImportTypesPackage(route spec.Route) bool {
 	}
 
 	return true
+}
+
+const addTemplate = `
+md := new(model.{{.Name}})
+copier.Copy(md, req)
+err = l.{{.Name}}Model.Create(md)
+`
+
+const updateTemplate = `
+md := new(model.{{.Name}})
+copier.Copy(md, req)
+err = l.{{.Name}}Model.Update(md)
+`
+
+const delTemplate = `
+err = l.{{.Name}}Model.Delete(req.Id)
+`
+
+const listTemplate = `
+resp = new(types.List{{.Name}}Resp)
+	items, _ := l.{{.Name}}Model.List(l.ctx, req.Page, req.Size, req.All)
+	for _, it := range items {
+		td := new(types.{{.Name}})
+		copier.Copy(td, it)
+		resp.Items = append(resp.Items, td)
+	}
+
+	if !req.All {
+		resp.Total, _ = l.{{.Name}}Model.Count(l.ctx)
+	}`
+
+// 添加逻辑
+func genBody(name string, t string) string {
+	tmpl, _ := template.New("abc").Parse(t)
+
+	var buf bytes.Buffer
+	tmpl.Execute(&buf, map[string]interface{}{
+		"Name": name,
+	})
+
+	return buf.String()
 }

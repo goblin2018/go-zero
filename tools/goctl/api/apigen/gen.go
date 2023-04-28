@@ -91,7 +91,10 @@ func toCamelCase(str string) string {
 	camelCase := ""
 
 	for _, word := range words {
-		camelCase += strings.Title(word)
+		camelCase += strings.ToUpper(word[:1])
+		if len(word) > 1 {
+			camelCase += word[1:]
+		}
 	}
 
 	return camelCase

@@ -38,6 +38,7 @@ func BuildTypes(types []spec.Type) (string, error) {
 	return builder.String(), nil
 }
 
+// todo 分开多个文件生成
 func genTypes(dir string, cfg *config.Config, api *spec.ApiSpec) error {
 	val, err := BuildTypes(api.Types)
 	if err != nil {

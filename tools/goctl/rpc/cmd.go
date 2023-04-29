@@ -20,7 +20,8 @@ var (
 	protocCmd = cobrax.NewCommand("protoc", cobrax.WithRunE(cli.ZRPC), cobrax.WithArgs(cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)))
 )
 
-func init() {
+// 禁用rpc命令
+func Init() {
 	var (
 		rpcCmdFlags      = Cmd.Flags()
 		newCmdFlags      = newCmd.Flags()

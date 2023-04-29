@@ -14,7 +14,8 @@ var (
 	revertCmd = cobrax.NewCommand("revert", cobrax.WithRunE(revertTemplates))
 )
 
-func init() {
+// 禁用template命令
+func Init() {
 	initCmd.Flags().StringVar(&varStringHome, "home")
 	cleanCmd.Flags().StringVar(&varStringHome, "home")
 	updateCmd.Flags().StringVar(&varStringHome, "home")

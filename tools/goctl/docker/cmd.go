@@ -17,7 +17,8 @@ var (
 	Cmd = cobrax.NewCommand("docker", cobrax.WithRunE(dockerCommand))
 )
 
-func init() {
+// 禁用docker命令
+func Init() {
 	dockerCmdFlags := Cmd.Flags()
 	dockerCmdFlags.StringVar(&varExeName, "exe")
 	dockerCmdFlags.StringVar(&varStringGo, "go")

@@ -30,7 +30,8 @@ var (
 	deployCmd = cobrax.NewCommand("deploy", cobrax.WithRunE(deploymentCommand))
 )
 
-func init() {
+// 禁用kube命令
+func Init() {
 	deployCmdFlags := deployCmd.Flags()
 	deployCmdFlags.StringVar(&varStringName, "name")
 	deployCmdFlags.StringVar(&varStringNamespace, "namespace")
@@ -59,5 +60,6 @@ func init() {
 	_ = deployCmd.MarkFlagRequired("o")
 	_ = deployCmd.MarkFlagRequired("port")
 
-	Cmd.AddCommand(deployCmd)
+	// 禁用kube命令
+	// Cmd.AddCommand(deployCmd)
 }

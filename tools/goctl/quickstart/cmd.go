@@ -14,6 +14,7 @@ var (
 	Cmd = cobrax.NewCommand("quickstart", cobrax.WithRunE(run))
 )
 
-func init() {
+// 禁用quickstart命令
+func Init() {
 	Cmd.Flags().StringVarPWithDefaultValue(&varStringServiceType, "service-type", "t", "mono")
 }

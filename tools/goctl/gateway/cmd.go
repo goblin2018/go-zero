@@ -20,7 +20,8 @@ var (
 	Cmd = cobrax.NewCommand("gateway", cobrax.WithRunE(generateGateway))
 )
 
-func init() {
+// 禁用gateway命令
+func Init() {
 	Cmd.PersistentFlags().StringVar(&varStringHome, "home")
 	Cmd.PersistentFlags().StringVar(&varStringRemote, "remote")
 	Cmd.PersistentFlags().StringVar(&varStringBranch, "branch")

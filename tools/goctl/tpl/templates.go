@@ -7,14 +7,13 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/zeromicro/go-zero/core/errorx"
+
 	"github.com/zeromicro/go-zero/tools/goctl/api/apigen"
 	"github.com/zeromicro/go-zero/tools/goctl/api/gogen"
 	apinew "github.com/zeromicro/go-zero/tools/goctl/api/new"
 	"github.com/zeromicro/go-zero/tools/goctl/docker"
 	"github.com/zeromicro/go-zero/tools/goctl/gateway"
 	"github.com/zeromicro/go-zero/tools/goctl/kube"
-	mongogen "github.com/zeromicro/go-zero/tools/goctl/model/mongo/generate"
-	modelgen "github.com/zeromicro/go-zero/tools/goctl/model/sql/gen"
 	rpcgen "github.com/zeromicro/go-zero/tools/goctl/rpc/generator"
 	"github.com/zeromicro/go-zero/tools/goctl/util/pathx"
 )
@@ -33,9 +32,6 @@ func genTemplates(_ *cobra.Command, _ []string) error {
 			return gogen.GenTemplates()
 		},
 		func() error {
-			return modelgen.GenTemplates()
-		},
-		func() error {
 			return rpcgen.GenTemplates()
 		},
 		func() error {
@@ -43,9 +39,6 @@ func genTemplates(_ *cobra.Command, _ []string) error {
 		},
 		func() error {
 			return kube.GenTemplates()
-		},
-		func() error {
-			return mongogen.Templates()
 		},
 		func() error {
 			return apigen.GenTemplates()
@@ -88,9 +81,6 @@ func cleanTemplates(_ *cobra.Command, _ []string) error {
 			return gogen.Clean()
 		},
 		func() error {
-			return modelgen.Clean()
-		},
-		func() error {
 			return rpcgen.Clean()
 		},
 		func() error {
@@ -98,9 +88,6 @@ func cleanTemplates(_ *cobra.Command, _ []string) error {
 		},
 		func() error {
 			return kube.Clean()
-		},
-		func() error {
-			return mongogen.Clean()
 		},
 		func() error {
 			return apigen.Clean()
@@ -143,10 +130,6 @@ func updateTemplates(_ *cobra.Command, _ []string) (err error) {
 		return kube.Update()
 	case rpcgen.Category():
 		return rpcgen.Update()
-	case modelgen.Category():
-		return modelgen.Update()
-	case mongogen.Category():
-		return mongogen.Update()
 	case apigen.Category():
 		return apigen.Update()
 	case apinew.Category():
@@ -182,10 +165,6 @@ func revertTemplates(_ *cobra.Command, _ []string) (err error) {
 		return gogen.RevertTemplate(filename)
 	case rpcgen.Category():
 		return rpcgen.RevertTemplate(filename)
-	case modelgen.Category():
-		return modelgen.RevertTemplate(filename)
-	case mongogen.Category():
-		return mongogen.RevertTemplate(filename)
 	case apigen.Category():
 		return apigen.RevertTemplate(filename)
 	case apinew.Category():

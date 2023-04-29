@@ -8,6 +8,9 @@ import (
 	"path"
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/zeromicro/go-zero/tools/goctl/api/spec"
 	apiutil "github.com/zeromicro/go-zero/tools/goctl/api/util"
 	"github.com/zeromicro/go-zero/tools/goctl/config"
@@ -21,7 +24,7 @@ const typesFile = "types"
 var typesTemplate string
 
 // BuildTypes gen types to string
-func BuildTypes(types []spec.Type) (string, error) {
+func BuildTypes(types []spec.Type, config *config.Config) (string, error) {
 	var builder strings.Builder
 	first := true
 	for _, tp := range types {
@@ -30,7 +33,7 @@ func BuildTypes(types []spec.Type) (string, error) {
 		} else {
 			builder.WriteString("\n\n")
 		}
-		if err := writeType(&builder, tp); err != nil {
+		if err := writeType(&builder, tp, config); err != nil {
 			return "", apiutil.WrapErr(err, "Type "+tp.Name()+" generate error")
 		}
 	}
@@ -39,7 +42,7 @@ func BuildTypes(types []spec.Type) (string, error) {
 }
 
 func genTypes(dir string, cfg *config.Config, api *spec.ApiSpec) error {
-	val, err := BuildTypes(api.Types)
+	val, err := BuildTypes(api.Types, cfg)
 	if err != nil {
 		return err
 	}
@@ -68,23 +71,38 @@ func genTypes(dir string, cfg *config.Config, api *spec.ApiSpec) error {
 	})
 }
 
-func writeType(writer io.Writer, tp spec.Type) error {
+func writeType(writer io.Writer, tp spec.Type, config *config.Config) error {
 	structType, ok := tp.(spec.DefineStruct)
 	if !ok {
 		return fmt.Errorf("unspport struct type: %s", tp.Name())
 	}
 
+	// write doc for swagger
+	swaggerStr := strings.Builder{}
+	for _, v := range structType.Documents() {
+		fmt.Fprintf(writer, "%s\n", v)
+		swaggerStr.WriteString(v)
+	}
+
+	if !strings.Contains(swaggerStr.String(), "swagger") {
+		if strings.HasSuffix(tp.Name(), "Req") || strings.HasSuffix(tp.Name(), "Info") {
+			fmt.Fprintf(writer, "// swagger:model %s \n", tp.Name())
+		} else if strings.HasSuffix(tp.Name(), "Resp") {
+			fmt.Fprintf(writer, "// swagger:model %s \n", tp.Name())
+		}
+	}
+
 	fmt.Fprintf(writer, "type %s struct {\n", util.Title(tp.Name()))
 	for _, member := range structType.Members {
 		if member.IsInline {
-			if _, err := fmt.Fprintf(writer, "%s\n", strings.Title(member.Type.Name())); err != nil {
+			if _, err := fmt.Fprintf(writer, "%s\n", cases.Title(language.English, cases.NoLower).String(member.Type.Name())); err != nil {
 				return err
 			}
 
 			continue
 		}
 
-		if err := writeProperty(writer, member.Name, member.Tag, member.GetComment(), member.Type, 1); err != nil {
+		if err := writeProperty(writer, member.Name, member.Tag, member.GetComment(), member.Type, member.Docs, 1); err != nil {
 			return err
 		}
 	}

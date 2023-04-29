@@ -1,6 +1,7 @@
 package new
 
 import (
+	_ "embed"
 	"fmt"
 
 	"github.com/zeromicro/go-zero/tools/goctl/util/pathx"
@@ -8,11 +9,18 @@ import (
 
 const (
 	category        = "newapi"
-	apiTemplateFile = "newtemplate.tpl"
+	apiTemplateFile = "base.tpl"
+	allApiTemplate  = "allapi.tpl"
 )
 
+//go:embed allapi.tpl
+var allApiTmpl string
+
+//go:embed baseapi.tpl
+var baseApiTmpl string
+
 var templates = map[string]string{
-	apiTemplateFile: apiTemplate,
+	apiTemplateFile: baseApiTmpl,
 }
 
 // Category returns the category of the api files.

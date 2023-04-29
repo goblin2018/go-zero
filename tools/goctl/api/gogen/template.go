@@ -18,6 +18,12 @@ const (
 	routesTemplateFile          = "routes.tpl"
 	routesAdditionTemplateFile  = "route-addition.tpl"
 	typesTemplateFile           = "types.tpl"
+	dockerfileTemplateFile      = "dockerfile.tpl"
+	makefileTemplateFile        = "makefile.tpl"
+	authorityTemplateFile       = "authoritymiddleware.tpl"
+	gitlabTemplateFile          = "gitlab.tpl"
+	dbErrorHandlerTemplateFile  = "dberrorhandler.tpl"
+	entTxTemplateFile           = "enttx.tpl"
 )
 
 var templates = map[string]string{
@@ -43,12 +49,12 @@ func Clean() error {
 	return pathx.Clean(category)
 }
 
-// GenTemplates generates api template files.
+// GenTemplates generates api enttemplate files.
 func GenTemplates() error {
 	return pathx.InitTemplates(category, templates)
 }
 
-// RevertTemplate reverts the given template file to the default value.
+// RevertTemplate reverts the given enttemplate file to the default value.
 func RevertTemplate(name string) error {
 	content, ok := templates[name]
 	if !ok {
@@ -57,7 +63,7 @@ func RevertTemplate(name string) error {
 	return pathx.CreateTemplate(category, name, content)
 }
 
-// Update updates the template files to the templates built in current goctl.
+// Update updates the enttemplate files to the templates built in current goctl.
 func Update() error {
 	err := Clean()
 	if err != nil {

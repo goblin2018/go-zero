@@ -1,3 +1,17 @@
+// Copyright 2023 The Ryan SU Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package new
 
 import (
@@ -9,14 +23,14 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/iancoleman/strcase"
+
 	"github.com/zeromicro/go-zero/tools/goctl/api/gogen"
 	conf "github.com/zeromicro/go-zero/tools/goctl/config"
 	"github.com/zeromicro/go-zero/tools/goctl/util"
 	"github.com/zeromicro/go-zero/tools/goctl/util/pathx"
 )
-
-//go:embed api.tpl
-var apiTemplate string
 
 var (
 	// VarStringHome describes the goctl home.
@@ -27,6 +41,24 @@ var (
 	VarStringBranch string
 	// VarStringStyle describes the style of output files.
 	VarStringStyle string
+	// VarBoolErrorTranslate describes whether to translate error
+	VarBoolErrorTranslate bool
+	// VarBoolUseCasbin describe whether to use Casbin
+	VarBoolUseCasbin bool
+	// VarBoolUseI18n describe whether to use i18n
+	VarBoolUseI18n bool
+	// VarStringGoZeroVersion describe the version of Go Zero
+	VarStringGoZeroVersion string
+	// VarStringToolVersion describe the version of Simple Admin Tools
+	VarStringToolVersion string
+	// VarModuleName describe the module name
+	VarModuleName string
+	// VarIntServicePort describe the service port exposed
+	VarIntServicePort int
+	// VarBoolGitlab describes whether to use gitlab-ci
+	VarBoolGitlab bool
+	// VarBoolEnt describes whether to use ent in api
+	VarBoolEnt bool
 )
 
 // CreateServiceCommand fast create service
@@ -49,15 +81,10 @@ func CreateServiceCommand(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	dirName = filepath.Base(filepath.Clean(abs))
-	filename := dirName + ".api"
-	apiFilePath := filepath.Join(abs, filename)
-	fp, err := os.Create(apiFilePath)
+	err = pathx.MkdirIfNotExist(filepath.Join(abs, "desc"))
 	if err != nil {
 		return err
 	}
-
-	defer fp.Close()
 
 	if len(VarStringRemote) > 0 {
 		repo, _ := util.CloneIntoGitHome(VarStringRemote, VarStringBranch)
@@ -70,19 +97,61 @@ func CreateServiceCommand(_ *cobra.Command, args []string) error {
 		pathx.RegisterGoctlHome(VarStringHome)
 	}
 
-	text, err := pathx.LoadTemplate(category, apiTemplateFile, apiTemplate)
+	apiFilePath := filepath.Join(abs, "desc", "all.api")
+
+	text, err := pathx.LoadTemplate(category, apiTemplateFile, baseApiTmpl)
 	if err != nil {
 		return err
 	}
 
-	t := template.Must(template.New("template").Parse(text))
-	if err := t.Execute(fp, map[string]string{
-		"name":    dirName,
-		"handler": strings.Title(dirName),
+	baseApiFile, err := os.Create(filepath.Join(abs, "desc", "base.api"))
+	if err != nil {
+		return err
+	}
+	defer baseApiFile.Close()
+
+	t := template.Must(template.New("baseApiTemplate").Parse(text))
+	if err := t.Execute(baseApiFile, map[string]string{
+		"name": strcase.ToCamel(dirName),
 	}); err != nil {
 		return err
 	}
 
-	err = gogen.DoGenProject(apiFilePath, abs, VarStringStyle)
+	allApiFile, err := os.Create(filepath.Join(abs, "desc", "all.api"))
+	if err != nil {
+		return err
+	}
+	defer allApiFile.Close()
+
+	allTpl := template.Must(template.New("allApiTemplate").Parse(allApiTmpl))
+	if err := allTpl.Execute(allApiFile, map[string]string{
+		"name": strcase.ToCamel(dirName),
+	}); err != nil {
+		return err
+	}
+
+	var moduleName string
+
+	if VarModuleName != "" {
+		moduleName = VarModuleName
+	} else {
+		moduleName = dirName
+	}
+
+	genCtx := &gogen.GenContext{
+		GoZeroVersion: VarStringGoZeroVersion,
+		ToolVersion:   VarStringToolVersion,
+		UseCasbin:     VarBoolUseCasbin,
+		UseI18n:       VarBoolUseI18n,
+		TransErr:      VarBoolErrorTranslate,
+		ModuleName:    moduleName,
+		Port:          VarIntServicePort,
+		UseGitlab:     VarBoolGitlab,
+		UseMakefile:   true,
+		UseDockerfile: true,
+		UseEnt:        VarBoolEnt,
+	}
+
+	err = gogen.DoGenProject(apiFilePath, abs, VarStringStyle, genCtx)
 	return err
 }

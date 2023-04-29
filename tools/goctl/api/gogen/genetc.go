@@ -3,7 +3,6 @@ package gogen
 import (
 	_ "embed"
 	"fmt"
-	"strconv"
 
 	"github.com/zeromicro/go-zero/tools/goctl/api/spec"
 	"github.com/zeromicro/go-zero/tools/goctl/config"
@@ -11,14 +10,13 @@ import (
 )
 
 const (
-	defaultPort = 8888
-	etcDir      = "etc"
+	etcDir = "etc"
 )
 
 //go:embed etc.tpl
 var etcTemplate string
 
-func genEtc(dir string, cfg *config.Config, api *spec.ApiSpec) error {
+func genEtc(dir string, cfg *config.Config, api *spec.ApiSpec, g *GenContext) error {
 	filename, err := format.FileNamingFormat(cfg.NamingFormat, api.Service.Name)
 	if err != nil {
 		return err
@@ -26,7 +24,7 @@ func genEtc(dir string, cfg *config.Config, api *spec.ApiSpec) error {
 
 	service := api.Service
 	host := "0.0.0.0"
-	port := strconv.Itoa(defaultPort)
+	port := g.Port
 
 	return genFile(fileGenConfig{
 		dir:             dir,
@@ -36,10 +34,13 @@ func genEtc(dir string, cfg *config.Config, api *spec.ApiSpec) error {
 		category:        category,
 		templateFile:    etcTemplateFile,
 		builtinTemplate: etcTemplate,
-		data: map[string]string{
+		data: map[string]any{
 			"serviceName": service.Name,
 			"host":        host,
 			"port":        port,
+			"useCasbin":   g.UseCasbin,
+			"useI18n":     g.UseI18n,
+			"useEnt":      g.UseEnt,
 		},
 	})
 }

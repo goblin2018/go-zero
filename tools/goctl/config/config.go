@@ -6,7 +6,13 @@ import (
 )
 
 // DefaultFormat defines a default naming style
-const DefaultFormat = "gozero"
+const DefaultFormat = "go_zero"
+
+// DefaultGoZeroVersion defines the default version of go zero for migrate
+const DefaultGoZeroVersion = "v1.5.1"
+
+// DefaultToolVersion defines the default version of simple admin tools for migrate
+const DefaultToolVersion = "v1.5.3"
 
 // Config defines the file naming style
 type Config struct {

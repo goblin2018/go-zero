@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/zeromicro/go-zero/core/collection"
+
 	conf "github.com/zeromicro/go-zero/tools/goctl/config"
 	"github.com/zeromicro/go-zero/tools/goctl/rpc/parser"
 	"github.com/zeromicro/go-zero/tools/goctl/util"
@@ -28,7 +29,8 @@ var serverTemplate string
 
 // GenServer generates rpc server file, which is an implementation of rpc server
 func (g *Generator) GenServer(ctx DirContext, proto parser.Proto, cfg *conf.Config,
-	c *ZRpcContext) error {
+	c *ZRpcContext,
+) error {
 	if !c.Multiple {
 		return g.genServerInCompatibility(ctx, proto, cfg, c)
 	}
@@ -39,10 +41,7 @@ func (g *Generator) GenServer(ctx DirContext, proto parser.Proto, cfg *conf.Conf
 func (g *Generator) genServerGroup(ctx DirContext, proto parser.Proto, cfg *conf.Config) error {
 	dir := ctx.GetServer()
 	for _, service := range proto.Service {
-		var (
-			serverFile  string
-			logicImport string
-		)
+		var serverFile string
 
 		serverFilename, err := format.FileNamingFormat(cfg.NamingFormat, service.Name+"_server")
 		if err != nil {
@@ -59,15 +58,24 @@ func (g *Generator) genServerGroup(ctx DirContext, proto parser.Proto, cfg *conf
 			return err
 		}
 
+		imports := collection.NewSet()
+
 		serverDir := filepath.Base(serverChildPkg)
-		logicImport = fmt.Sprintf(`"%v"`, logicChildPkg)
+
+		// add logic import
+		if groupNames := GetGroup(service); len(groupNames) > 0 {
+			for _, v := range groupNames {
+				imports.AddStr(fmt.Sprintf(`"%v/%s"`, logicChildPkg, v))
+			}
+		} else {
+			imports.AddStr(fmt.Sprintf(`"%v"`, logicChildPkg))
+		}
+
 		serverFile = filepath.Join(dir.Filename, serverDir, serverFilename+".go")
 
 		svcImport := fmt.Sprintf(`"%v"`, ctx.GetSvc().Package)
 		pbImport := fmt.Sprintf(`"%v"`, ctx.GetPb().Package)
-
-		imports := collection.NewSet()
-		imports.AddStr(logicImport, svcImport, pbImport)
+		imports.AddStr(svcImport, pbImport)
 
 		head := util.GetHead(proto.Name)
 
@@ -105,14 +113,25 @@ func (g *Generator) genServerGroup(ctx DirContext, proto parser.Proto, cfg *conf
 }
 
 func (g *Generator) genServerInCompatibility(ctx DirContext, proto parser.Proto,
-	cfg *conf.Config, c *ZRpcContext) error {
+	cfg *conf.Config, c *ZRpcContext,
+) error {
 	dir := ctx.GetServer()
-	logicImport := fmt.Sprintf(`"%v"`, ctx.GetLogic().Package)
+	imports := collection.NewSet()
+
 	svcImport := fmt.Sprintf(`"%v"`, ctx.GetSvc().Package)
 	pbImport := fmt.Sprintf(`"%v"`, ctx.GetPb().Package)
 
-	imports := collection.NewSet()
-	imports.AddStr(logicImport, svcImport, pbImport)
+	// group data
+	groupData := GetGroup(proto.Service[0])
+	if len(groupData) > 0 {
+		for _, v := range groupData {
+			imports.AddStr(fmt.Sprintf(`"%v/%s"`, ctx.GetLogic().Package, v))
+		}
+	} else {
+		imports.AddStr(fmt.Sprintf(`"%v"`, ctx.GetLogic().Package))
+	}
+
+	imports.AddStr(svcImport, pbImport)
 
 	head := util.GetHead(proto.Name)
 	service := proto.Service[0]
@@ -164,11 +183,20 @@ func (g *Generator) genFunctions(goPackage string, service parser.Service, multi
 
 		var logicName string
 		if !multiple {
-			logicPkg = "logic"
+			if groupName := GetGroupName(rpc); groupName != "" {
+				logicPkg = groupName
+			} else {
+				logicPkg = "logic"
+			}
+
 			logicName = fmt.Sprintf("%sLogic", stringx.From(rpc.Name).ToCamel())
 		} else {
-			nameJoin := fmt.Sprintf("%s_logic", service.Name)
-			logicPkg = strings.ToLower(stringx.From(nameJoin).ToCamel())
+			if groupName := GetGroupName(rpc); groupName != "" {
+				logicPkg = groupName
+			} else {
+				nameJoin := fmt.Sprintf("%s_logic", service.Name)
+				logicPkg = strings.ToLower(stringx.From(nameJoin).ToCamel())
+			}
 			logicName = fmt.Sprintf("%sLogic", stringx.From(rpc.Name).ToCamel())
 		}
 

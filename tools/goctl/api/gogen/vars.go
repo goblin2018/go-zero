@@ -9,5 +9,8 @@ const (
 	logicDir      = internal + "logic"
 	middlewareDir = internal + "middleware"
 	typesDir      = internal + typesPacket
+	i18nDir       = internal + "i18n"
+	localeDir     = i18nDir + "/locale"
 	groupProperty = "group"
+	utilsDir      = internal + "utils"
 )

@@ -3,14 +3,46 @@ syntax = "proto3";
 package {{.package}};
 option go_package="./{{.package}}";
 
-message Request {
-  string ping = 1;
+// base message
+message Empty {}
+
+message IDReq {
+  uint64 id = 1;
 }
 
-message Response {
-  string pong = 1;
+message IDsReq {
+  repeated uint64 ids = 1;
 }
+
+message UUIDsReq {
+  repeated string ids = 1;
+}
+
+message UUIDReq {
+  string id = 1;
+}
+
+message BaseResp {
+  string msg = 1;
+}
+
+message PageInfoReq {
+  uint64 page = 1;
+  uint64 page_size = 2;
+}
+
+message BaseIDResp {
+  uint64 id = 1;
+  string msg = 2;
+}
+
+message BaseUUIDResp {
+  string id = 1;
+  string msg = 2;
+}
+
 
 service {{.serviceName}} {
-  rpc Ping(Request) returns(Response);
+  // group: base
+  rpc initDatabase (Empty) returns (BaseResp);
 }

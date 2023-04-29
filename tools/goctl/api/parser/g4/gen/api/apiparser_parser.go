@@ -171,7 +171,7 @@ var parserATN = []uint16{
 }
 var literalNames = []string{
 	"", "'='", "'('", "')'", "'{'", "'}'", "'*'", "'time.Time'", "'['", "']'",
-	"'returns'", "'-'", "'/'", "'/:'", "'@doc'", "'@handler'", "'interface{}'",
+	"'returns'", "'-'", "'/'", "'/:'", "'@doc'", "'@handler'", "'any'",
 	"'@server'",
 }
 var symbolicNames = []string{

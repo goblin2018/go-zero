@@ -48,7 +48,7 @@ func TestExecutor_RunE(t *testing.T) {
 			Want:  "aabbcc",
 		},
 		{
-			Name:  "invalid_input",
+			Name:  "invalid_Input",
 			Input: "😄",
 			E:     dummyError,
 		},
@@ -84,7 +84,7 @@ func TestWithComparison(t *testing.T) {
 			Want:  "aabbcc",
 		},
 		{
-			Name:  "invalid_input",
+			Name:  "invalid_Input",
 			Input: "😄",
 			E:     dummyError,
 		},

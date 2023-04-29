@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"text/template"
 
 	"github.com/zeromicro/go-zero/core/collection"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/zeromicro/go-zero/tools/goctl/api/spec"
 	"github.com/zeromicro/go-zero/tools/goctl/api/util"
 	"github.com/zeromicro/go-zero/tools/goctl/pkg/golang"
@@ -33,7 +37,9 @@ func genFile(c fileGenConfig) error {
 	if !created {
 		return nil
 	}
-	defer fp.Close()
+	defer func(fp *os.File) {
+		_ = fp.Close()
+	}(fp)
 
 	var text string
 	if len(c.category) == 0 || len(c.templateFile) == 0 {
@@ -57,15 +63,37 @@ func genFile(c fileGenConfig) error {
 	return err
 }
 
-func writeProperty(writer io.Writer, name, tag, comment string, tp spec.Type, indent int) error {
-	util.WriteIndent(writer, indent)
+func writeProperty(writer io.Writer, name, tag, comment string, tp spec.Type, doc spec.Doc, indent int) error {
+	// write doc for swagger
 	var err error
+	hasValidator := false
+
+	for _, v := range doc {
+		_, _ = fmt.Fprintf(writer, "\t%s\n", v)
+		if util.HasCustomValidation(v) {
+			hasValidator = true
+		}
+	}
+
+	if !hasValidator {
+		validatorComment, err := util.ConvertValidateTagToSwagger(tag)
+		if err != nil {
+			return err
+		}
+
+		for _, v := range validatorComment {
+			_, _ = fmt.Fprint(writer, v)
+		}
+	}
+
+	util.WriteIndent(writer, indent)
+
 	if len(comment) > 0 {
 		comment = strings.TrimPrefix(comment, "//")
 		comment = "//" + comment
-		_, err = fmt.Fprintf(writer, "%s %s %s %s\n", strings.Title(name), tp.Name(), tag, comment)
+		_, err = fmt.Fprintf(writer, "%s %s %s %s\n", cases.Title(language.English, cases.NoLower).String(name), tp.Name(), tag, comment)
 	} else {
-		_, err = fmt.Fprintf(writer, "%s %s %s\n", strings.Title(name), tp.Name(), tag)
+		_, err = fmt.Fprintf(writer, "%s %s %s\n", cases.Title(language.English, cases.NoLower).String(name), tp.Name(), tag)
 	}
 
 	return err
@@ -144,7 +172,7 @@ func golangExpr(ty spec.Type, pkg ...string) string {
 			return v.RawName
 		}
 
-		return fmt.Sprintf("%s.%s", pkg[0], strings.Title(v.RawName))
+		return fmt.Sprintf("%s.%s", pkg[0], cases.Title(language.English, cases.NoLower).String(v.RawName))
 	case spec.ArrayType:
 		if len(pkg) > 1 {
 			panic("package cannot be more than 1")
@@ -180,4 +208,15 @@ func golangExpr(ty spec.Type, pkg ...string) string {
 	}
 
 	return ""
+}
+
+// ConvertRoutePathToSwagger converts route path to swagger format.
+func ConvertRoutePathToSwagger(data string) string {
+	splitData := strings.Split(data, "/")
+	for i, v := range splitData {
+		if strings.Contains(v, ":") {
+			splitData[i] = "{" + v[1:] + "}"
+		}
+	}
+	return strings.Join(splitData, "/")
 }

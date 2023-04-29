@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/zeromicro/go-zero/core/collection"
+
 	conf "github.com/zeromicro/go-zero/tools/goctl/config"
 	"github.com/zeromicro/go-zero/tools/goctl/rpc/parser"
 	"github.com/zeromicro/go-zero/tools/goctl/util"
@@ -28,7 +29,8 @@ var logicTemplate string
 
 // GenLogic generates the logic file of the rpc service, which corresponds to the RPC definition items in proto.
 func (g *Generator) GenLogic(ctx DirContext, proto parser.Proto, cfg *conf.Config,
-	c *ZRpcContext) error {
+	c *ZRpcContext,
+) error {
 	if !c.Multiple {
 		return g.genLogicInCompatibility(ctx, proto, cfg)
 	}
@@ -37,7 +39,8 @@ func (g *Generator) GenLogic(ctx DirContext, proto parser.Proto, cfg *conf.Confi
 }
 
 func (g *Generator) genLogicInCompatibility(ctx DirContext, proto parser.Proto,
-	cfg *conf.Config) error {
+	cfg *conf.Config,
+) error {
 	dir := ctx.GetLogic()
 	service := proto.Service[0].Service.Name
 	for _, rpc := range proto.Service[0].RPC {
@@ -47,7 +50,27 @@ func (g *Generator) genLogicInCompatibility(ctx DirContext, proto parser.Proto,
 			return err
 		}
 
-		filename := filepath.Join(dir.Filename, logicFilename+".go")
+		var (
+			filename    string
+			groupName   string
+			packageName string
+		)
+
+		// group
+		groupName = GetGroupName(rpc)
+
+		if groupName == "" {
+			filename = filepath.Join(dir.Filename, logicFilename+".go")
+			packageName = "logic"
+		} else {
+			err = pathx.MkdirIfNotExist(filepath.Join(dir.Filename, groupName))
+			if err != nil {
+				return err
+			}
+			filename = filepath.Join(dir.Filename, groupName, logicFilename+".go")
+			packageName = groupName
+		}
+
 		functions, err := g.genLogicFunction(service, proto.PbPackage, logicName, rpc)
 		if err != nil {
 			return err
@@ -63,7 +86,7 @@ func (g *Generator) genLogicInCompatibility(ctx DirContext, proto parser.Proto,
 		err = util.With("logic").GoFmt(true).Parse(text).SaveTo(map[string]any{
 			"logicName":   fmt.Sprintf("%sLogic", stringx.From(rpc.Name).ToCamel()),
 			"functions":   functions,
-			"packageName": "logic",
+			"packageName": packageName,
 			"imports":     strings.Join(imports.KeysStr(), pathx.NL),
 		}, filename, false)
 		if err != nil {
@@ -100,7 +123,20 @@ func (g *Generator) genLogicGroup(ctx DirContext, proto parser.Proto, cfg *conf.
 				return err
 			}
 
-			filename = filepath.Join(dir.Filename, serviceDir, logicFilename+".go")
+			// group
+			groupName := GetGroupName(rpc)
+
+			if groupName == "" {
+				filename = filepath.Join(dir.Filename, serviceDir, logicFilename+".go")
+			} else {
+				err = pathx.MkdirIfNotExist(filepath.Join(dir.Filename, serviceDir, groupName))
+				if err != nil {
+					return err
+				}
+				filename = filepath.Join(dir.Filename, serviceDir, groupName, logicFilename+".go")
+				packageName = groupName
+			}
+
 			functions, err := g.genLogicFunction(serviceName, proto.PbPackage, logicName, rpc)
 			if err != nil {
 				return err
@@ -129,7 +165,8 @@ func (g *Generator) genLogicGroup(ctx DirContext, proto parser.Proto, cfg *conf.
 
 func (g *Generator) genLogicFunction(serviceName, goPackage, logicName string,
 	rpc *parser.RPC) (string,
-	error) {
+	error,
+) {
 	functions := make([]string, 0)
 	text, err := pathx.LoadTemplate(category, logicFuncTemplateFileFile, logicFunctionTemplate)
 	if err != nil {

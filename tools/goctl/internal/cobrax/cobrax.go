@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
 	"github.com/zeromicro/go-zero/tools/goctl/internal/flags"
 )
 
@@ -80,6 +81,10 @@ func (f *FlagSet) IntVar(p *int, name string) {
 
 func (f *FlagSet) IntVarWithDefaultValue(p *int, name string, value int) {
 	f.FlagSet.IntVar(p, name, value, "")
+}
+
+func (f *FlagSet) IntVarPWithDefaultValue(p *int, name string, shorthand string, value int) {
+	f.FlagSet.IntVarP(p, name, shorthand, value, "")
 }
 
 func (f *FlagSet) StringSliceVarP(p *[]string, name, shorthand string) {

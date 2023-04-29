@@ -6,22 +6,19 @@ import (
 	"os"
 	"time"
 
-	"github.com/zeromicro/go-zero/core/stringx"
 	"github.com/zeromicro/go-zero/tools/goctl/rpc/execx"
 	"github.com/zeromicro/go-zero/tools/goctl/util/console"
 	"github.com/zeromicro/go-zero/tools/goctl/util/ctx"
 )
 
 const (
-	deprecatedGoZeroMod = "github.com/tal-tech/go-zero"
-	deprecatedBuilderx  = "github.com/tal-tech/go-zero/tools/goctl/model/sql/builderx"
-	replacementBuilderx = "github.com/zeromicro/go-zero/core/stores/builder"
-	goZeroMod           = "github.com/zeromicro/go-zero"
+	goZeroMod = "github.com/zeromicro/go-zero"
+	adminTool = "github.com/suyuan32/simple-admin-tools"
 )
 
 var errInvalidGoMod = errors.New("it's only working for go module")
 
-func editMod(version string, verbose bool) error {
+func editMod(zeroVersion, toolVersion string, verbose bool) error {
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -32,22 +29,22 @@ func editMod(version string, verbose bool) error {
 		return nil
 	}
 
-	latest, err := getLatest(goZeroMod, verbose)
+	mod := fmt.Sprintf("%s@%s", goZeroMod, zeroVersion)
+
+	err = addRequire(mod, verbose)
 	if err != nil {
 		return err
 	}
 
-	if !stringx.Contains(latest, version) {
-		return fmt.Errorf("release version %q is not found", version)
-	}
+	// add replace
+	mod = fmt.Sprintf("%s@%s=%s@%s", goZeroMod, zeroVersion, adminTool, toolVersion)
 
-	mod := fmt.Sprintf("%s@%s", goZeroMod, version)
-	err = removeRequire(deprecatedGoZeroMod, verbose)
+	err = addReplace(mod, verbose)
 	if err != nil {
 		return err
 	}
 
-	return addRequire(mod, verbose)
+	return nil
 }
 
 func addRequire(mod string, verbose bool) error {
@@ -69,16 +66,22 @@ func addRequire(mod string, verbose bool) error {
 	return err
 }
 
-func removeRequire(mod string, verbose bool) error {
+func addReplace(mod string, verbose bool) error {
 	if verbose {
-		console.Info("remove require %s ...", mod)
+		console.Info("adding replace %s ...", mod)
 		time.Sleep(200 * time.Millisecond)
 	}
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	_, err = execx.Run("go mod edit -droprequire "+mod, wd)
+
+	isGoMod, _ := ctx.IsGoMod(wd)
+	if !isGoMod {
+		return errInvalidGoMod
+	}
+
+	_, err = execx.Run("go mod edit -replace "+mod, wd)
 	return err
 }
 

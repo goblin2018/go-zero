@@ -29,6 +29,8 @@ func Parse(filename string) (*spec.ApiSpec, error) {
 		return nil, err
 	}
 
+	fmt.Printf("parsedApi:%+v\n", parsedApi)
+
 	apiSpec := new(spec.ApiSpec)
 	p := parser{ast: parsedApi, spec: apiSpec}
 	err = p.convert2Spec()

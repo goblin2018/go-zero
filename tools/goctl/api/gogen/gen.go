@@ -103,6 +103,8 @@ func DoGenProject(apiFile, dir, style string) error {
 	fmt.Println("generating files...", name)
 	// 类型文件
 	logx.Must(genTypes(dir, cfg, api, name))
+
+	logx.Must(genModel(dir, cfg, api, name))
 	// 路由文件
 	logx.Must(genRoutes(dir, rootPkg, cfg, api))
 	// handlers文件

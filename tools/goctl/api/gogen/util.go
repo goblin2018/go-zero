@@ -3,7 +3,6 @@ package gogen
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"strings"
 	"text/template"
 
@@ -54,20 +53,6 @@ func genFile(c fileGenConfig) error {
 
 	code := golang.FormatCode(buffer.String())
 	_, err = fp.WriteString(code)
-	return err
-}
-
-func writeProperty(writer io.Writer, name, tag, comment string, tp spec.Type, indent int) error {
-	util.WriteIndent(writer, indent)
-	var err error
-	if len(comment) > 0 {
-		comment = strings.TrimPrefix(comment, "//")
-		comment = "//" + comment
-		_, err = fmt.Fprintf(writer, "%s %s %s %s\n", strings.Title(name), tp.Name(), tag, comment)
-	} else {
-		_, err = fmt.Fprintf(writer, "%s %s %s\n", strings.Title(name), tp.Name(), tag)
-	}
-
 	return err
 }
 

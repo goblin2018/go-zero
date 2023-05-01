@@ -65,6 +65,7 @@ func init() {
 	// formatCmdFlags.BoolVar(&format.VarBoolSkipCheckDeclare, "declare")
 
 	goCmdFlags.StringVar(&gogen.VarStringDir, "dir")
+	goCmdFlags.StringVar(&gogen.VarTsStringDir, "tdir")
 	goCmdFlags.StringVar(&gogen.VarStringAPI, "api")
 	goCmdFlags.StringVar(&gogen.VarStringHome, "home")
 	goCmdFlags.StringVar(&gogen.VarStringRemote, "remote")

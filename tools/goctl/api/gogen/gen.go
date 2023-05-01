@@ -29,6 +29,9 @@ var (
 	tmpDir = path.Join(os.TempDir(), "goctl")
 	// VarStringDir describes the directory.
 	VarStringDir string
+
+	// ts文件目录
+	VarTsStringDir string
 	// VarStringAPI describes the API.
 	VarStringAPI string
 	// VarStringHome describes the go home.
@@ -49,6 +52,8 @@ func GoCommand(_ *cobra.Command, _ []string) error {
 	home := VarStringHome
 	remote := VarStringRemote
 	branch := VarStringBranch
+
+	tdir := VarTsStringDir
 	if len(remote) > 0 {
 		repo, _ := util.CloneIntoGitHome(remote, branch)
 		if len(repo) > 0 {
@@ -66,11 +71,11 @@ func GoCommand(_ *cobra.Command, _ []string) error {
 		return errors.New("missing -dir")
 	}
 
-	return DoGenProject(apiFile, dir, namingStyle)
+	return DoGenProject(apiFile, dir, namingStyle, tdir)
 }
 
 // DoGenProject gen go project files with api file
-func DoGenProject(apiFile, dir, style string) error {
+func DoGenProject(apiFile, dir, style, tdir string) error {
 	name := apiutil.GetFileName(apiFile)
 	api, err := parser.Parse(apiFile)
 	if err != nil {
@@ -103,8 +108,10 @@ func DoGenProject(apiFile, dir, style string) error {
 	fmt.Println("generating files...", name)
 	// 类型文件
 	logx.Must(genTypes(dir, cfg, api, name))
-
+	// 模型文件
 	logx.Must(genModel(dir, cfg, api, name))
+	// ts文件
+	logx.Must(genTs(tdir, cfg, api, name))
 	// 路由文件
 	logx.Must(genRoutes(dir, rootPkg, cfg, api))
 	// handlers文件

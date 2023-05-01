@@ -263,11 +263,11 @@ func (v *ApiVisitor) VisitNormalField(ctx *api.NormalFieldContext) any {
 		field.CommentExpr = v.getComment(ctx)
 	}
 	if ctx.GetTag() != nil {
-		tagText := ctx.GetTag().GetText()
+		// tagText := ctx.GetTag().GetText()
 		tagExpr := v.newExprWithToken(ctx.GetTag())
-		if !api.MatchTag(tagText) {
-			v.panic(tagExpr, fmt.Sprintf("mismatched tag, found input '%s'", tagText))
-		}
+		// if !api.MatchTag(tagText) {
+		// 	v.panic(tagExpr, fmt.Sprintf("mismatched tag, found input '%s'", tagText))
+		// }
 		field.Tag = tagExpr
 		field.CommentExpr = v.getComment(ctx)
 	}

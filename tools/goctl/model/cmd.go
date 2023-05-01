@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/zeromicro/go-zero/tools/goctl/internal/cobrax"
+	"github.com/zeromicro/go-zero/tools/goctl/model/mgo"
 	"github.com/zeromicro/go-zero/tools/goctl/model/mongo"
 	"github.com/zeromicro/go-zero/tools/goctl/model/sql/command"
 )
@@ -15,6 +16,8 @@ var (
 	pgCmd           = cobrax.NewCommand("pg", cobrax.WithRunE(command.PostgreSqlDataSource))
 	pgDatasourceCmd = cobrax.NewCommand("datasource", cobrax.WithRunE(command.PostgreSqlDataSource))
 	mongoCmd        = cobrax.NewCommand("mongo", cobrax.WithRunE(mongo.Action))
+	// 自定义mongo命令
+	mgoCmd = cobrax.NewCommand("mongo", cobrax.WithRunE(mgo.Action))
 )
 
 func init() {
@@ -23,6 +26,7 @@ func init() {
 		datasourceCmdFlags   = datasourceCmd.Flags()
 		pgDatasourceCmdFlags = pgDatasourceCmd.Flags()
 		mongoCmdFlags        = mongoCmd.Flags()
+		mgoCmdFlags          = mgoCmd.Flags()
 	)
 
 	ddlCmdFlags.StringVarP(&command.VarStringSrc, "src", "s")
@@ -66,10 +70,13 @@ func init() {
 	mongoCmdFlags.StringVar(&mongo.VarStringRemote, "remote")
 	mongoCmdFlags.StringVar(&mongo.VarStringBranch, "branch")
 
+	// 自定义mongo命令
+	mgoCmdFlags.StringVarP(&mgo.VarStringName, "name", "n")
+
 	mysqlCmd.PersistentFlags().BoolVar(&command.VarBoolStrict, "strict")
 	mysqlCmd.PersistentFlags().StringSliceVarPWithDefaultValue(&command.VarStringSliceIgnoreColumns, "ignore-columns", "i", []string{"create_at", "created_at", "create_time", "update_at", "updated_at", "update_time"})
 
 	mysqlCmd.AddCommand(datasourceCmd, ddlCmd)
 	pgCmd.AddCommand(pgDatasourceCmd)
-	Cmd.AddCommand(mysqlCmd, mongoCmd, pgCmd)
+	Cmd.AddCommand(mysqlCmd, mgoCmd, pgCmd)
 }

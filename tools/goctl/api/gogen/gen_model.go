@@ -126,6 +126,8 @@ func writeModelP(writer io.Writer, name, tag, comment string, tp spec.Type, inde
 		}
 	}
 
+	fmt.Println("get json tag: ", jt)
+
 	ntag := fmt.Sprintf("`json:\"%s\" bson:\"%s\"", jt, jt)
 	if rt.Get("key") != "" {
 		ntag = fmt.Sprintf("%s key:\"%s\"", ntag, rt.Get("key"))
@@ -141,7 +143,7 @@ func writeModelP(writer io.Writer, name, tag, comment string, tp spec.Type, inde
 		comment = "//" + comment
 		_, err = fmt.Fprintf(writer, "%s %s %s %s\n", strings.Title(name), tp.Name(), ntag, comment)
 	} else {
-		_, err = fmt.Fprintf(writer, "%s %s %s\n", strings.Title(name), tp.Name(), tag)
+		_, err = fmt.Fprintf(writer, "%s %s %s\n", strings.Title(name), tp.Name(), ntag)
 	}
 
 	return err

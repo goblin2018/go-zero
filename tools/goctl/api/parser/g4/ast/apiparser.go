@@ -472,22 +472,13 @@ func (p *Parser) checkType(linePrefix string, types map[string]TypeExpr, expr Da
 		if api.IsBasicType(name) {
 			return nil
 		}
-		_, ok := types[name]
-		if !ok {
-			return fmt.Errorf("%s line %d:%d can not found declaration '%s' in context",
-				linePrefix, v.Literal.Line(), v.Literal.Column(), name)
-		}
 
 	case *Pointer:
 		name := v.Name.Text()
 		if api.IsBasicType(name) {
 			return nil
 		}
-		_, ok := types[name]
-		if !ok {
-			return fmt.Errorf("%s line %d:%d can not found declaration '%s' in context",
-				linePrefix, v.Name.Line(), v.Name.Column(), name)
-		}
+
 	case *Map:
 		return p.checkType(linePrefix, types, v.Value)
 	case *Array:

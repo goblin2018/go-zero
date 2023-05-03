@@ -13,7 +13,6 @@ import (
 	"github.com/zeromicro/go-zero/core/collection"
 	"github.com/zeromicro/go-zero/tools/goctl/api/spec"
 	"github.com/zeromicro/go-zero/tools/goctl/config"
-	"github.com/zeromicro/go-zero/tools/goctl/util/format"
 	"github.com/zeromicro/go-zero/tools/goctl/util/pathx"
 	"github.com/zeromicro/go-zero/tools/goctl/vars"
 )
@@ -101,17 +100,18 @@ func genRoutes(dir, rootPkg string, cfg *config.Config, api *spec.ApiSpec) error
 				r.method, r.path, r.handler)
 		}
 
-		var jwt string
-		if g.jwtEnabled {
-			jwt = fmt.Sprintf("\n rest.WithJwt(serverCtx.Config.%s.AccessSecret),", g.authName)
-		}
-		if len(g.jwtTrans) > 0 {
-			jwt = jwt + fmt.Sprintf("\n rest.WithJwtTransition(serverCtx.Config.%s.PrevSecret,serverCtx.Config.%s.Secret),", g.jwtTrans, g.jwtTrans)
-		}
-		var signature, prefix string
-		if g.signatureEnabled {
-			signature = "\n rest.WithSignature(serverCtx.Config.Signature),"
-		}
+		// var jwt string
+		// if g.jwtEnabled {
+		// 	jwt = fmt.Sprintf("\n rest.WithJwt(serverCtx.Config.%s.AccessSecret),", g.authName)
+		// }
+		// if len(g.jwtTrans) > 0 {
+		// 	jwt = jwt + fmt.Sprintf("\n rest.WithJwtTransition(serverCtx.Config.%s.PrevSecret,serverCtx.Config.%s.Secret),", g.jwtTrans, g.jwtTrans)
+		// }
+		// var signature, prefix string
+		// if g.signatureEnabled {
+		// 	signature = "\n rest.WithSignature(serverCtx.Config.Signature),"
+		// }
+		var prefix string
 		if len(g.prefix) > 0 {
 			prefix = fmt.Sprintf(`
 rest.WithPrefix("%s"),`, g.prefix)
@@ -159,21 +159,22 @@ rest.WithPrefix("%s"),`, g.prefix)
 		}
 
 		if err := gt.Execute(&builder, map[string]string{
-			"routes":    routes,
-			"jwt":       jwt,
-			"signature": signature,
-			"prefix":    prefix,
-			"timeout":   timeout,
-			"maxBytes":  maxBytes,
+			"routes":   routes,
+			"prefix":   prefix,
+			"timeout":  timeout,
+			"maxBytes": maxBytes,
 		}); err != nil {
 			return err
 		}
 	}
 
-	routeFilename, err := format.FileNamingFormat(cfg.NamingFormat, routesFilename)
-	if err != nil {
-		return err
-	}
+	// 使用第一个group 名称做文件名
+	routeFilename := groups[0].authName
+	strs := strings.Split(routesFilename, "/")
+	routeFilename = strings.Join(strs, "_")
+
+	// 删除并添加routes文件
+	// 修改routes.go文件
 
 	routeFilename = routeFilename + ".go"
 	filename := path.Join(dir, handlerDir, routeFilename)
@@ -245,15 +246,15 @@ func getRoutes(api *spec.ApiSpec) ([]group, error) {
 		groupedRoutes.timeout = g.GetAnnotation("timeout")
 		groupedRoutes.maxBytes = g.GetAnnotation("maxBytes")
 
-		jwt := g.GetAnnotation("jwt")
-		if len(jwt) > 0 {
-			groupedRoutes.authName = jwt
-			groupedRoutes.jwtEnabled = true
-		}
-		jwtTrans := g.GetAnnotation(jwtTransKey)
-		if len(jwtTrans) > 0 {
-			groupedRoutes.jwtTrans = jwtTrans
-		}
+		// jwt := g.GetAnnotation("jwt")
+		// if len(jwt) > 0 {
+		// 	groupedRoutes.authName = jwt
+		// 	groupedRoutes.jwtEnabled = true
+		// }
+		// jwtTrans := g.GetAnnotation(jwtTransKey)
+		// if len(jwtTrans) > 0 {
+		// 	groupedRoutes.jwtTrans = jwtTrans
+		// }
 
 		signature := g.GetAnnotation("signature")
 		if signature == "true" {
@@ -279,4 +280,18 @@ func getRoutes(api *spec.ApiSpec) ([]group, error) {
 
 func toPrefix(folder string) string {
 	return strings.ReplaceAll(folder, "/", "")
+}
+
+func toCamelCase(str string) string {
+	words := strings.Split(str, "_")
+	camelCase := ""
+
+	for _, word := range words {
+		camelCase += strings.ToUpper(word[:1])
+		if len(word) > 1 {
+			camelCase += word[1:]
+		}
+	}
+
+	return camelCase
 }

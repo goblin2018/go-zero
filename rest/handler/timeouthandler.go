@@ -31,14 +31,14 @@ const (
 // Notice: even if canceled in server side, 499 will be logged as well.
 func TimeoutHandler(duration time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		if duration > 0 {
-			return &timeoutHandler{
-				handler: next,
-				dt:      duration,
-			}
+		if duration <= 0 {
+			return next
 		}
 
-		return next
+		return &timeoutHandler{
+			handler: next,
+			dt:      duration,
+		}
 	}
 }
 
@@ -127,6 +127,12 @@ type timeoutWriter struct {
 
 var _ http.Pusher = (*timeoutWriter)(nil)
 
+func (tw *timeoutWriter) Flush() {
+	if flusher, ok := tw.w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
 func (tw *timeoutWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hijacked, ok := tw.w.(http.Hijacker); ok {
 		return hijacked.Hijack()
@@ -207,9 +213,11 @@ func relevantCaller() runtime.Frame {
 		if !strings.HasPrefix(frame.Function, "net/http.") {
 			return frame
 		}
+
 		if !more {
 			break
 		}
 	}
+
 	return frame
 }

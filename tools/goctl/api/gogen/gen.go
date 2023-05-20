@@ -97,6 +97,12 @@ func DoGenProject(apiFile, dir, style, tdir string) error {
 		return err
 	}
 
+	if len(api.Service.Name) == 0 {
+		// 只生成类型文件
+		logx.Must(genTypes(dir, cfg, api, name))
+		return nil
+	}
+
 	logx.Must(genEtc(dir, cfg, api))
 	logx.Must(genConfig(dir, cfg, api))
 

@@ -316,7 +316,7 @@ func (a *Analyzer) findDefinedType(name string) (spec.Type, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("type %s not defined", name)
+	return nil, fmt.Errorf("type2 %s not defined", name)
 }
 
 func (a *Analyzer) getType(expr *ast.BodyStmt) (spec.Type, error) {

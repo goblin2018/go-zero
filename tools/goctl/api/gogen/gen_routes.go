@@ -2,6 +2,7 @@ package gogen
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"sort"
@@ -30,7 +31,7 @@ import (
 	{{.importPackages}}
 )
 
-func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
+func register{{.routeFuncName}}(server *rest.Server, serverCtx *svc.ServiceContext) {
 	{{.routesAdditions}}
 }
 `
@@ -108,6 +109,7 @@ func genRoutes(dir, rootPkg string, cfg *config.Config, api *spec.ApiSpec) error
 		// 	jwt = jwt + fmt.Sprintf("\n rest.WithJwtTransition(serverCtx.Config.%s.PrevSecret,serverCtx.Config.%s.Secret),", g.jwtTrans, g.jwtTrans)
 		// }
 		// var signature, prefix string
+		// signature = ""
 		// if g.signatureEnabled {
 		// 	signature = "\n rest.WithSignature(serverCtx.Config.Signature),"
 		// }
@@ -159,22 +161,32 @@ rest.WithPrefix("%s"),`, g.prefix)
 		}
 
 		if err := gt.Execute(&builder, map[string]string{
-			"routes":   routes,
-			"prefix":   prefix,
-			"timeout":  timeout,
-			"maxBytes": maxBytes,
+			"routes":    routes,
+			"prefix":    prefix,
+			"signature": "",
+			"jwt":       "",
+			"timeout":   timeout,
+			"maxBytes":  maxBytes,
 		}); err != nil {
 			return err
 		}
 	}
 
 	// 使用第一个group 名称做文件名
-	routeFilename := groups[0].authName
-	strs := strings.Split(routesFilename, "/")
+	routeFilename := groups[0].prefix
+
+	routeFilename = strings.TrimPrefix(routeFilename, "/api/")
+
+	strs := strings.Split(routeFilename, "/")
 	routeFilename = strings.Join(strs, "_")
+
+	// 对每一个路由函数起名
+	routeFuncName := toCamelCase(routeFilename)
 
 	// 删除并添加routes文件
 	// 修改routes.go文件
+
+	addToRoutes(dir, handlerDir, "register"+routeFuncName)
 
 	routeFilename = routeFilename + ".go"
 	filename := path.Join(dir, handlerDir, routeFilename)
@@ -192,6 +204,7 @@ rest.WithPrefix("%s"),`, g.prefix)
 			"hasTimeout":      hasTimeout,
 			"importPackages":  genRouteImports(rootPkg, api),
 			"routesAdditions": strings.TrimSpace(builder.String()),
+			"routeFuncName":   routeFuncName,
 		},
 	})
 }
@@ -294,4 +307,32 @@ func toCamelCase(str string) string {
 	}
 
 	return camelCase
+}
+
+func addToRoutes(dir, handlerDir, funcName string) {
+	path := path.Join(dir, handlerDir, "routes.go")
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Println("Error reading file:", err)
+		return
+	}
+
+	result := string(content)
+	if !strings.Contains(result, funcName) {
+		lines := strings.Split(result, "\n")
+		for i, line := range lines {
+			if strings.Contains(line, "RegisterHandlers") {
+				lines = append(lines[:i+1], append([]string{fmt.Sprintf("\t%s(server, ctx)", funcName)}, lines[i+1:]...)...)
+				break
+			}
+		}
+		result = strings.Join(lines, "\n")
+	}
+
+	err = ioutil.WriteFile(path, []byte(result), 0644)
+	if err != nil {
+		fmt.Println("Error writing file:", err)
+		return
+	}
+
 }

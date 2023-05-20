@@ -21,17 +21,23 @@ const dstDir = "app/model/"
 
 // model 结构体
 type TemplateData struct {
-	StructName string
-	TableName  string
-	Unis       []KeyInfo // 唯一索引
-	UnisWC     string    // 中间使用:冒号
-	UnisWD     string    // 中间使用,逗号
-	UnisWDWQ   string    // 中间使用,逗号 加引号
-	UnisWAnd   string    // 中间使用and符号
-	UnisWType  string    // 唯一索引带类型
-	UnisPD     string    // 前面带data.
-	UnisWTWT   string    // tag 引号 tag
-	FileName   string
+	StructName     string
+	TableName      string
+	Unis           []KeyInfo // 唯一索引
+	UnisWC         string    // 中间使用:冒号
+	UnisWD         string    // 中间使用,逗号
+	UnisWDWQ       string    // 中间使用,逗号 加引号
+	UnisWAnd       string    // 中间使用and符号
+	UnisWType      string    // 唯一索引带类型
+	UnisPD         string    // 前面带data.
+	UnisWDs        string    // 中间使用,逗号
+	UnisWTWT       string    // tag 引号 tag
+	FileName       string
+	UseList        bool   // 是否使用列表
+	ListFilter     string // 获取列表的过滤条件
+	ListStructName string // 获取列表的结构体名称
+	UsePage        bool   // 是否使用分页
+	UseCountFilter bool   // 是否使用分页的过滤条件
 }
 
 // 索引信息
@@ -50,11 +56,7 @@ func GenMongo(name string) (err error) {
 		return
 	}
 	// 查找第一个结构体定义
-	firstStruct, stName := findFirstStruct(node)
-	if firstStruct == nil {
-		fmt.Println("No struct found in test.go")
-		return
-	}
+	sts := findFirstAndListStruct(node)
 
 	// 解析模板文件
 	tmpl, err := template.New("mgoTemplate").Parse(modelTemplate)
@@ -64,7 +66,7 @@ func GenMongo(name string) (err error) {
 	}
 
 	// 模板数据
-	td := getTemplateData(stName, firstStruct, name)
+	td := getTemplateData(sts, name)
 
 	// 生成代码并保存到xxx.gen.go文件中
 	generateAndSaveCode(td, tmpl)
@@ -75,19 +77,23 @@ func GenMongo(name string) (err error) {
 }
 
 // 获取模板数据
-func getTemplateData(stName string, firstStruct *ast.StructType, filename string) TemplateData {
+func getTemplateData(sts []StructInfo, filename string) TemplateData {
+
+	fst := sts[0]
+
 	td := TemplateData{
-		StructName: stName,
-		TableName:  ToSnakeCase(stName),
+		StructName: fst.Name,
+		TableName:  ToSnakeCase(fst.Name),
 		FileName:   filename,
 		Unis:       make([]KeyInfo, 0),
 	}
+
 	// 遍历结构体的字段
 	// tag字段
 	var tags []string
 	var fields []string // 字段
 	var ts []string     // 类型
-	for _, field := range firstStruct.Fields.List {
+	for _, field := range fst.AstType.Fields.List {
 		tag := reflect.StructTag(strings.Trim(field.Tag.Value, "`"))
 		// keyTag := tag.Get("key")
 		uniTag := tag.Get("uni")
@@ -103,7 +109,7 @@ func getTemplateData(stName string, firstStruct *ast.StructType, filename string
 
 	td.UnisWC = strings.Join(tags, ":")
 	td.UnisWAnd = strings.Join(fields, "and")
-	td.UnisWD = strings.Join(fields, ", ")
+	td.UnisWD = strings.Join(tags, ", ")
 	for i, v := range tags {
 		td.UnisWType += fmt.Sprintf("%s %s", v, ts[i])
 		td.UnisWDWQ += fmt.Sprintf("\"%s\"", v)
@@ -117,11 +123,48 @@ func getTemplateData(stName string, firstStruct *ast.StructType, filename string
 		}
 	}
 
+	// 处理列表数据
+	var filter string
+	if len(sts) > 1 {
+		td.UseList = true
+		listStruct := sts[1]
+		td.ListStructName = listStruct.Name
+		filter = "bson.M{"
+		for _, field := range listStruct.AstType.Fields.List {
+			tag := reflect.StructTag(strings.Trim(field.Tag.Value, "`"))
+			jsonTag := tag.Get("json")
+			fmt.Println("jsonTag: ", jsonTag)
+			sts := strings.Split(jsonTag, ",")
+			jsonTag = sts[0]
+			if jsonTag == "page" {
+				td.UsePage = true
+				continue
+			}
+			if jsonTag == "size" || jsonTag == "all" {
+
+				continue
+			}
+			if jsonTag != "" {
+				filter += fmt.Sprintf("\"%s\": req.%s, ", jsonTag, field.Names[0].Name)
+				td.UseCountFilter = true
+			}
+		}
+		filter += "}"
+	}
+	td.ListFilter = filter
+	fmt.Println("filter: ", filter)
 	return td
 }
 
+type StructInfo struct {
+	AstType *ast.StructType
+	Name    string
+}
+
 // 查找第一个结构体
-func findFirstStruct(node *ast.File) (*ast.StructType, string) {
+func findFirstAndListStruct(node *ast.File) (items []StructInfo) {
+
+	hasFirst := false
 	for _, decl := range node.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok {
@@ -135,12 +178,20 @@ func findFirstStruct(node *ast.File) (*ast.StructType, string) {
 			}
 
 			r, ok := typeSpec.Type.(*ast.StructType)
-			if ok {
-				return r, typeSpec.Name.Name
+			if ok && !hasFirst {
+				items = append(items, StructInfo{AstType: r, Name: typeSpec.Name.Name})
+				hasFirst = true
+			}
+
+			if hasFirst {
+				if strings.HasPrefix(typeSpec.Name.Name, "List") {
+					items = append(items, StructInfo{AstType: r, Name: typeSpec.Name.Name})
+					break
+				}
 			}
 		}
 	}
-	return nil, ""
+	return
 }
 
 // 生成代码并保存到xxx.gen.go文件中

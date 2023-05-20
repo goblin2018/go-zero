@@ -141,15 +141,17 @@ func (p parser) fillTypes() error {
 		case spec.DefineStruct:
 			var members []spec.Member
 			for _, member := range v.Members {
-				switch v := member.Type.(type) {
-				case spec.DefineStruct:
-					tp, err := p.findDefinedType(v.RawName)
-					if err != nil {
-						return err
-					}
+				// Todo 忽略未定义的类型，继续解析
+				// switch v := member.Type.(type) {
+				// case spec.DefineStruct:
+				// 	tp, err := p.findDefinedType(v.RawName)
+				// 	if err != nil {
+				// 		continue
+				// 		// return err
+				// 	}
 
-					member.Type = *tp
-				}
+				// 	member.Type = *tp
+				// }
 				members = append(members, member)
 			}
 			v.Members = members
@@ -172,7 +174,7 @@ func (p parser) findDefinedType(name string) (*spec.Type, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("type %s not defined", name)
+	return nil, fmt.Errorf("type1 %s not defined", name)
 }
 
 func (p parser) fieldToMember(field *ast.TypeField) spec.Member {

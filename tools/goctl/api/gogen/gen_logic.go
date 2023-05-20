@@ -58,21 +58,37 @@ func genLogicByRoute(dir, rootPkg string, cfg *config.Config, group spec.Group, 
 	bodyStr := ""
 
 	// 获取请求类型名称 去除前缀和后缀
-	requestType := route.RequestType.Name()
-	requestType = strings.TrimPrefix(requestType, "List")
-	requestType = strings.TrimSuffix(requestType, "Req")
-	requestType = strings.TrimPrefix(requestType, "Del")
+	// 构造logic内容
+	if route.RequestType != nil {
+		requestType := route.RequestType.Name()
+		requestType = strings.TrimPrefix(requestType, "List")
+		requestType = strings.TrimSuffix(requestType, "Req")
+		requestType = strings.TrimPrefix(requestType, "Del")
 
-	// 增加增删改查的基础逻辑
-	switch funcName {
-	case "add":
-		bodyStr = genBody(requestType, addTemplate)
-	case "update":
-		bodyStr = genBody(requestType, updateTemplate)
-	case "del":
-		bodyStr = genBody(requestType, delTemplate)
-	case "list":
-		bodyStr = genBody(requestType, listTemplate)
+		// 增加增删改查的基础逻辑
+		switch funcName {
+		case "add":
+			bodyStr = genBody(GenBodyOpt{Name: requestType}, addTemplate)
+		case "update":
+			bodyStr = genBody(GenBodyOpt{Name: requestType}, updateTemplate)
+		case "del":
+			bodyStr = genBody(GenBodyOpt{Name: requestType}, delTemplate)
+		default:
+			if strings.HasPrefix(funcName, "list") {
+				opt := GenBodyOpt{Name: requestType}
+				for _, m := range route.RequestType.(spec.DefineStruct).Members {
+					if m.Name == "Page" {
+						opt.UsePage = true
+						continue
+					}
+					if m.Name != "Page" && m.Name != "Size" && m.Name != "All" {
+						opt.UseCountSearch = true
+						continue
+					}
+				}
+				bodyStr = genBody(opt, listTemplate)
+			}
+		}
 	}
 
 	subDir := getLogicFolderPath(group, route)
@@ -177,24 +193,37 @@ err = l.{{.Name}}Model.Delete(req.Id)
 
 const listTemplate = `
 resp = new(types.List{{.Name}}Resp)
-	items, _ := l.{{.Name}}Model.List(l.ctx, req.Page, req.Size, req.All)
+	opt := new(model.List{{.Name}}Req)
+	copier.Copy(opt, req)
+	items, _ := l.{{.Name}}Model.List(l.ctx, opt)
 	for _, it := range items {
 		td := new(types.{{.Name}})
 		copier.Copy(td, it)
 		resp.Items = append(resp.Items, td)
 	}
 
-	if !req.All {
-		resp.Total, _ = l.{{.Name}}Model.Count(l.ctx)
-	}`
+	{{if .UsePage}}
+	if opt.Size != 0 {
+		resp.Total, _ = l.{{.Name}}Model.Count(l.ctx{{if .UseCountSearch}}, opt{{end}})
+	}
+	{{end}}
+`
+
+type GenBodyOpt struct {
+	Name           string
+	UsePage        bool
+	UseCountSearch bool // 分页是否需要搜索
+}
 
 // 添加逻辑
-func genBody(name string, t string) string {
+func genBody(opt GenBodyOpt, t string) string {
 	tmpl, _ := template.New("abc").Parse(t)
 
 	var buf bytes.Buffer
 	tmpl.Execute(&buf, map[string]interface{}{
-		"Name": name,
+		"Name":           opt.Name,
+		"UsePage":        opt.UsePage,
+		"UseCountSearch": opt.UseCountSearch,
 	})
 
 	return buf.String()

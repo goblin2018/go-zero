@@ -73,7 +73,7 @@ func (m *{{.StructName}}Model) FindBy{{.UnisWAnd}}({{.UnisWType}}) (data *{{.Str
 	data = &{{.StructName}}{}
 
 	var id string
-	key := getKey(m.secondKey, {{.UnisPD}})
+	key := getKey(m.secondKey, {{.UnisWD}})
 	if err = c.Get(key, &id); err == nil {
 		data, err = m.FindOne(id)
 		return
@@ -136,20 +136,23 @@ func (m *{{.StructName}}Model) Delete(id string) (err error) {
 	return
 }
 
+{{if .UseList}}
 // 列表
-func (m *{{.StructName}}Model) List(ctx context.Context, page, pageSize int64, all bool) (items []*{{.StructName}}, err error) {
+func (m *{{.StructName}}Model) List(ctx context.Context, req *{{.ListStructName}}) (items []*{{.StructName}}, err error) {
 	// Define the find options
 	opt := options.Find()
-	opt.SetSort(bson.D{{"{{"}}Key: "update_at", Value: -1{{"}}"}})
+	opt.SetSort(bson.D{{"{{"}}Key: "updateAt", Value: -1{{"}}"}})
 
+	{{if .UsePage}}
 	// 如果不是读取全部数据，就分页
-	if !all {
-		opt.SetSkip((page - 1) * pageSize)
-		opt.SetLimit(pageSize)
-	}
+	if req.Size != 0 {
+	  opt.SetSkip((req.Page - 1) * req.Size)
+    opt.SetLimit(req.Size)
+  }
+	{{end}}
 
 	// Execute the find operation
-	cursor, err := m.coll.Find(ctx, bson.D{}, opt)
+	cursor, err := m.coll.Find(ctx, {{.ListFilter}}, opt)
 	if err != nil {
 		return
 	}
@@ -162,7 +165,8 @@ func (m *{{.StructName}}Model) List(ctx context.Context, page, pageSize int64, a
 
 	return
 }
+{{end}}
 
-func (m *{{.StructName}}Model) Count(ctx context.Context) (int64, error) {
-	return m.coll.CountDocuments(ctx, bson.D{})
+func (m *{{.StructName}}Model) Count(ctx context.Context{{if .UseCountFilter}}, req *{{.ListStructName}}{{end}}) (int64, error) {
+	return m.coll.CountDocuments(ctx, {{.ListFilter}})
 }

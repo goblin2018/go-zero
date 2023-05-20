@@ -43,10 +43,10 @@ func BuidModel(types []spec.Type) (string, error) {
 		d = strings.TrimSpace(d)
 
 		fmt.Println("d:", d)
-		if (d != "base") && (d != "child") {
+		if (d != "base") && (d != "child") && (d != "list") {
 			continue
 		}
-		if err := writeT(&builder, st); err != nil {
+		if err := writeT(&builder, st, d); err != nil {
 			return "", apiutil.WrapErr(err, "Type "+tp.Name()+" generate error")
 		}
 	}
@@ -83,12 +83,14 @@ func genModel(dir string, cfg *config.Config, api *spec.ApiSpec, name string) er
 	})
 }
 
-func writeT(writer io.Writer, st spec.DefineStruct) error {
-
+func writeT(writer io.Writer, st spec.DefineStruct, t string) error {
+	fmt.Fprintf(writer, "\n")
 	fmt.Fprintf(writer, "type %s struct {\n", util.Title(st.Name()))
-	fmt.Fprint(writer, "Id string `json:\"id\" bson:\"_id,omitempty\"`\n")
-	fmt.Fprint(writer, "CreateAt time.Time `json:\"createAt\" bson:\"createAt\"`\n")
-	fmt.Fprint(writer, "UpdateAt time.Time `json:\"updateAt\" bson:\"updateAt\"`\n")
+	if t == "base" {
+		fmt.Fprint(writer, "Id string `json:\"id\" bson:\"_id,omitempty\"`\n")
+		fmt.Fprint(writer, "CreateAt time.Time `json:\"createAt\" bson:\"createAt\"`\n")
+		fmt.Fprint(writer, "UpdateAt time.Time `json:\"updateAt\" bson:\"updateAt\"`\n")
+	}
 	for _, member := range st.Members {
 		if member.IsInline {
 			if _, err := fmt.Fprintf(writer, "%s\n", strings.Title(member.Type.Name())); err != nil {
@@ -98,14 +100,14 @@ func writeT(writer io.Writer, st spec.DefineStruct) error {
 			continue
 		}
 
-		if err := writeModelP(writer, member.Name, member.Tag, member.GetComment(), member.Type, 1); err != nil {
+		if err := writeModelP(writer, member.Name, member.Tag, member.GetComment(), member.Type, t); err != nil {
 			return err
 		}
 	}
 	fmt.Fprintf(writer, "}")
 	return nil
 }
-func writeModelP(writer io.Writer, name, tag, comment string, tp spec.Type, indent int) error {
+func writeModelP(writer io.Writer, name, tag, comment string, tp spec.Type, t string) error {
 	// id 自动写入
 	if name == "Id" {
 		return nil
@@ -118,26 +120,24 @@ func writeModelP(writer io.Writer, name, tag, comment string, tp spec.Type, inde
 	if rt.Get("apionly") == "true" {
 		return nil
 	}
-	jt := rt.Get("json")
-	jts := strings.Split(jt, ",")
-	if len(jts) > 1 {
-		if jts[1] == "optional" {
-			jt = jts[0] + ",omitempty"
+	jt := getTag(tag, t)
+
+	var ntag string
+
+	if t != "list" {
+		ntag = fmt.Sprintf("`json:\"%s\" bson:\"%s\"", jt, jt)
+		if rt.Get("key") != "" {
+			ntag = fmt.Sprintf("%s key:\"%s\"", ntag, rt.Get("key"))
 		}
+		if rt.Get("uni") != "" {
+			ntag = fmt.Sprintf("%s uni:\"%s\"", ntag, rt.Get("uni"))
+		}
+		ntag = fmt.Sprintf("%s`", ntag)
+	} else {
+		ntag = fmt.Sprintf("`json:\"%s\"`", jt)
 	}
 
-	fmt.Println("get json tag: ", jt)
-
-	ntag := fmt.Sprintf("`json:\"%s\" bson:\"%s\"", jt, jt)
-	if rt.Get("key") != "" {
-		ntag = fmt.Sprintf("%s key:\"%s\"", ntag, rt.Get("key"))
-	}
-	if rt.Get("uni") != "" {
-		ntag = fmt.Sprintf("%s uni:\"%s\"", ntag, rt.Get("uni"))
-	}
-	ntag = fmt.Sprintf("%s`", ntag)
-
-	apiutil.WriteIndent(writer, indent)
+	apiutil.WriteIndent(writer, 1)
 	if len(comment) > 0 {
 		comment = strings.TrimPrefix(comment, "//")
 		comment = "//" + comment
@@ -147,4 +147,20 @@ func writeModelP(writer io.Writer, name, tag, comment string, tp spec.Type, inde
 	}
 
 	return err
+}
+
+func getTag(tag string, t string) string {
+	rt := reflect.StructTag(strings.Trim(tag, "`"))
+	var jt string
+	jt = rt.Get("json")
+	if jt == "" {
+		jt = rt.Get("form")
+	}
+	jts := strings.Split(jt, ",")
+	if len(jts) > 1 {
+		if jts[1] == "optional" {
+			jt = jts[0] + ",omitempty"
+		}
+	}
+	return jt
 }
